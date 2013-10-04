@@ -11,7 +11,7 @@ public class Result implements Serializable {
 
     private Map<String, Integer> keywords;
 
-    private double score;
+    private float score;
 
     public Result() {}
 
@@ -31,11 +31,11 @@ public class Result implements Serializable {
         this.keywords = keywords;
     }
 
-    public double getScore() {
+    public float getScore() {
         return score;
     }
 
-    public void setScore(double score) {
+    public void setScore(float score) {
         this.score = score;
     }
 

@@ -102,6 +102,9 @@ public class TextProcessing {
             r.setKeywords(sortedKeywords);
             r.setScore(hits[i].score);
 
+            Explanation explanation = searcher.explain(q, docID);
+            System.out.println(explanation.toString());
+
             results.add(r);
         }
         return results;
