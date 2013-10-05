@@ -17,18 +17,22 @@ public class HyperMapAnalyzer extends Analyzer {
 
     private CharArraySet stopWords;
 
-    public HyperMapAnalyzer() {
+    private Version version;
+
+    public HyperMapAnalyzer(Version version) {
+        this.version = version;
         stopWords = StopAnalyzer.ENGLISH_STOP_WORDS_SET;
     }
 
-    public HyperMapAnalyzer(List<String> stopWords) {
-        this.stopWords = StopFilter.makeStopSet(Version.LUCENE_44, stopWords);
+    public HyperMapAnalyzer(Version version, List<String> stopWords) {
+        this.version = version;
+        this.stopWords = StopFilter.makeStopSet(version, stopWords);
     }
 
     @Override
     protected TokenStreamComponents createComponents(String fieldName, Reader reader) {
-        Tokenizer source = new LowerCaseTokenizer(Version.LUCENE_44, reader);
-        TokenStream stopFilter = new StopFilter(Version.LUCENE_44,
+        Tokenizer source = new LowerCaseTokenizer(version, reader);
+        TokenStream stopFilter = new StopFilter(version,
                                                source,
                                                stopWords);
         TokenStream result = new PorterStemFilter(stopFilter);

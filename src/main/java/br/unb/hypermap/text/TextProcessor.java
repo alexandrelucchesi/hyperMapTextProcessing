@@ -3,10 +3,7 @@ package br.unb.hypermap.text;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.*;
 import org.apache.lucene.index.*;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
@@ -20,9 +17,10 @@ import org.apache.lucene.util.Version;
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
+import java.io.StringReader;
 import java.util.*;
 
-public class TextProcessing {
+public class TextProcessor {
 
     private Analyzer analyzer;
 
@@ -30,26 +28,30 @@ public class TextProcessing {
 
     private Directory indexDir;
 
-    public TextProcessing(Analyzer analyzer, File indexDir) throws IOException {
+    public TextProcessor(Analyzer analyzer, File indexDir) throws IOException {
         Directory dir = indexDir != null ? FSDirectory.open(indexDir) : new RAMDirectory();
         this.analyzer = analyzer;
         this.indexDir = dir;
-        this.writer = new IndexWriter(dir, new IndexWriterConfig(Version.LUCENE_44, analyzer));
+        IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_44, analyzer);
+        this.writer = new IndexWriter(dir, config);
     }
 
-    public TextProcessing(File indexDir) throws IOException {
-        this(new HyperMapAnalyzer(), indexDir);
+    public TextProcessor(File indexDir) throws IOException {
+        this(new HyperMapAnalyzer(Version.LUCENE_44), indexDir);
     }
 
     public void index(String id, String data, boolean store) throws IOException {
         Document document = new Document();
-        document.add(new StringField("id", id, Field.Store.YES));
+        document.add(new StoredField("id", id));
         FieldType fieldType = new FieldType();
         fieldType.setIndexed(true);
+        fieldType.setOmitNorms(true);
         fieldType.setTokenized(true);
         fieldType.setStored(store);
         fieldType.setStoreTermVectors(true);
-        document.add(new Field("contents", data, fieldType));
+        Field contents = new Field("contents", data, fieldType);
+        contents.setBoost(1.0f);
+        document.add(contents);
         writer.addDocument(document);
         writer.commit();
     }
@@ -64,7 +66,7 @@ public class TextProcessing {
 
     public Set<Result> search(String query, int n) throws IOException, ParseException {
         IndexReader reader = null;
-        QueryParser parser = new QueryParser(Version.LUCENE_44, "contents", new HyperMapAnalyzer());
+        QueryParser parser = new QueryParser(Version.LUCENE_44, "contents", new HyperMapAnalyzer(Version.LUCENE_44));
         Query q = parser.parse(query);
 
         int hitsPerPage = n;
@@ -100,7 +102,6 @@ public class TextProcessing {
             sortedKeywords.putAll(keywords);
 
             r.setKeywords(sortedKeywords);
-            r.setScore(hits[i].score);
 
             Explanation explanation = searcher.explain(q, docID);
             System.out.println(explanation.toString());
@@ -126,6 +127,10 @@ public class TextProcessing {
             throw new RuntimeException(e);
         }
         return result;
+    }
+
+    public List<String> tokenizeString(String text) {
+        return tokenizeString(new StringReader(text));
     }
 
     private class ValueComparator implements Comparator<String> {

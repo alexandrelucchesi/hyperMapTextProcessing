@@ -1,7 +1,10 @@
 package br.unb.hypermap.text;
 
 import java.io.Serializable;
+import java.util.Comparator;
 import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 public class Result implements Serializable {
 
@@ -11,7 +14,7 @@ public class Result implements Serializable {
 
     private Map<String, Integer> keywords;
 
-    private float score;
+    private double score;
 
     public Result() {}
 
@@ -31,12 +34,38 @@ public class Result implements Serializable {
         this.keywords = keywords;
     }
 
-    public float getScore() {
+    public double getScore() {
         return score;
     }
 
-    public void setScore(float score) {
+    public void setScore(double score) {
         this.score = score;
+    }
+
+    public Result sortKeywords() {
+        ValueComparator comparator = new ValueComparator(keywords);
+        SortedMap<String, Integer> sortedKeywords = new TreeMap<String, Integer>(comparator);
+        sortedKeywords.putAll(keywords);
+        this.keywords = sortedKeywords;
+        return this;
+    }
+
+    private class ValueComparator implements Comparator<String> {
+
+        private final Map<String,Integer> keywords;
+
+        public ValueComparator(Map<String, Integer> keywords) {
+            this.keywords = keywords;
+        }
+
+        @Override
+        public int compare(String s, String s2) {
+            if (keywords.get(s) >= keywords.get(s2)) {
+                return -1;
+            } else {
+                return 1;
+            } // return 0 would merge keys
+        }
     }
 
 }
