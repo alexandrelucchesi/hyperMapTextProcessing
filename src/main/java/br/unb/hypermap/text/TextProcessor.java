@@ -1,153 +1,127 @@
 package br.unb.hypermap.text;
 
+import org.apache.commons.math3.linear.ArrayRealVector;
+import org.apache.commons.math3.linear.RealVector;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.document.*;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.*;
-import org.apache.lucene.queryparser.classic.ParseException;
-import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.Reader;
-import java.io.StringReader;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
+/**
+ * Created with IntelliJ IDEA.
+ * User: alexandrelucchesi
+ * Date: 10/5/13
+ * Time: 6:03 PM
+ * To change this template use File | Settings | File Templates.
+ */
 public class TextProcessor {
 
-    private Analyzer analyzer;
+    public static TextProcessor textProcessor;
 
-    private IndexWriter writer;
+    public static final String CONTENTS = "contents";
 
-    private Directory indexDir;
+    private final Set<String> terms = new HashSet<String>();
 
-    public TextProcessor(Analyzer analyzer, File indexDir) throws IOException {
-        Directory dir = indexDir != null ? FSDirectory.open(indexDir) : new RAMDirectory();
-        this.analyzer = analyzer;
-        this.indexDir = dir;
-        IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_44, analyzer);
-        this.writer = new IndexWriter(dir, config);
+    public static TextProcessor instance() {
+        if (textProcessor == null)
+            textProcessor = new TextProcessor();
+        return textProcessor;
     }
 
-    public TextProcessor(File indexDir) throws IOException {
-        this(new HyperMapAnalyzer(Version.LUCENE_44), indexDir);
+    private TextProcessor() {}
+
+    public Result process(String query, String data) throws IOException {
+        Directory directory = createIndex(query, data);
+        IndexReader reader = DirectoryReader.open(directory);
+        Map<String, Integer> f1 = getTermFrequencies(reader, 0);
+        Map<String, Integer> f2 = getTermFrequencies(reader, 1);
+        reader.close();
+        RealVector v1 = toRealVector(f1);
+        RealVector v2 = toRealVector(f2);
+        Result result = new Result();
+        result.setKeywords(f2);
+        result.setScore(getCosineSimilarity(v1, v2));
+        return result;
     }
 
-    public void index(String id, String data, boolean store) throws IOException {
-        Document document = new Document();
-        document.add(new StoredField("id", id));
-        FieldType fieldType = new FieldType();
-        fieldType.setIndexed(true);
-        fieldType.setOmitNorms(true);
-        fieldType.setTokenized(true);
-        fieldType.setStored(store);
-        fieldType.setStoreTermVectors(true);
-        Field contents = new Field("contents", data, fieldType);
-        contents.setBoost(1.0f);
-        document.add(contents);
-        writer.addDocument(document);
-        writer.commit();
-    }
-
-    public void index(String id, File file, boolean store) throws IOException {
-        this.index(id, readFile(file), store);
-    }
-
-    private String readFile(File file) throws IOException {
-        return new Scanner(file).useDelimiter("\\A").next();
-    }
-
-    public Set<Result> search(String query, int n) throws IOException, ParseException {
-        IndexReader reader = null;
-        QueryParser parser = new QueryParser(Version.LUCENE_44, "contents", new HyperMapAnalyzer(Version.LUCENE_44));
-        Query q = parser.parse(query);
-
-        int hitsPerPage = n;
-        reader = DirectoryReader.open(indexDir);
-        IndexSearcher searcher = new IndexSearcher(reader);
-        TopScoreDocCollector collector = TopScoreDocCollector.create(hitsPerPage, true);
-        searcher.search(q, collector);
-        ScoreDoc[] hits = collector.topDocs().scoreDocs;
-
+    public Set<Result> processAll(String query, Set<String> data) throws IOException {
         Set<Result> results = new HashSet<Result>();
-        for (int i = 0; i < hits.length; i++) {
-            int docID = hits[i].doc;
-            Document d = searcher.doc(docID);
-            Result r = new Result();
-            r.setId(d.get("id"));
-
-            Map<String, Integer> keywords = new HashMap<String, Integer>();
-            Terms terms = reader.getTermVector(docID, "contents"); //get terms vectors for one document and one field
-            if (terms != null && terms.size() > 0) {
-                TermsEnum termsEnum = terms.iterator(null); // access the terms for this field
-                BytesRef term = null;
-                for (int j = 0; (term = termsEnum.next()) != null; j++) {// explore the terms for this field
-                    DocsEnum docsEnum = termsEnum.docs(null, null); // enumerate through documents, in this case only one
-                    int docIdEnum;
-                    while ((docIdEnum = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                        keywords.put(term.utf8ToString(), docsEnum.freq());
-                    }
-                }
-            }
-
-            ValueComparator comparator = new ValueComparator(keywords);
-            SortedMap<String, Integer> sortedKeywords = new TreeMap<String, Integer>(comparator);
-            sortedKeywords.putAll(keywords);
-
-            r.setKeywords(sortedKeywords);
-
-            Explanation explanation = searcher.explain(q, docID);
-            System.out.println(explanation.toString());
-
-            results.add(r);
+        for (String s : data) {
+            results.add(process(query, s));
         }
         return results;
     }
 
-    public void close() throws IOException {
-
+    private Directory createIndex(String s1, String s2) throws IOException {
+        Directory directory = new RAMDirectory();
+        Analyzer analyzer = new HyperMapAnalyzer(Version.LUCENE_44);
+        IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_44,
+                analyzer);
+        IndexWriter writer = new IndexWriter(directory, iwc);
+        addDocument(writer, s1);
+        addDocument(writer, s2);
+        writer.close();
+        return directory;
     }
 
-    public List<String> tokenizeString(Reader reader) {
-        List<String> result = new ArrayList<String>();
-        try {
-            TokenStream stream = analyzer.tokenStream(null, reader);
-            stream.reset();
-            while (stream.incrementToken()) {
-                result.add(stream.getAttribute(CharTermAttribute.class).toString());
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+    /* Indexed, tokenized, stored. */
+    private static final FieldType TYPE_STORED = new FieldType();
+
+    static {
+        TYPE_STORED.setIndexed(true);
+        TYPE_STORED.setTokenized(true);
+        TYPE_STORED.setStored(true);
+        TYPE_STORED.setStoreTermVectors(true);
+        TYPE_STORED.setStoreTermVectorPositions(true);
+        TYPE_STORED.freeze();
+    }
+
+    private void addDocument(IndexWriter writer, String contents) throws IOException {
+        Document doc = new Document();
+        Field field = new Field(CONTENTS, contents, TYPE_STORED);
+        doc.add(field);
+        writer.addDocument(doc);
+    }
+
+    private double getCosineSimilarity(RealVector v1, RealVector v2) {
+        return (v1.dotProduct(v2)) / (v1.getNorm() * v2.getNorm());
+    }
+
+    private Map<String, Integer> getTermFrequencies(IndexReader reader, int docId)
+            throws IOException {
+        Terms vector = reader.getTermVector(docId, CONTENTS);
+        TermsEnum termsEnum = null;
+        termsEnum = vector.iterator(termsEnum);
+        Map<String, Integer> frequencies = new HashMap<String, Integer>();
+        BytesRef text = null;
+        while ((text = termsEnum.next()) != null) {
+            String term = text.utf8ToString();
+            int freq = (int) termsEnum.totalTermFreq();
+            frequencies.put(term, freq);
+            terms.add(term);
         }
-        return result;
+        return frequencies;
     }
 
-    public List<String> tokenizeString(String text) {
-        return tokenizeString(new StringReader(text));
-    }
-
-    private class ValueComparator implements Comparator<String> {
-
-        private final Map<String,Integer> keywords;
-
-        public ValueComparator(Map<String, Integer> keywords) {
-            this.keywords = keywords;
+    private RealVector toRealVector(Map<String, Integer> map) {
+        RealVector vector = new ArrayRealVector(terms.size());
+        int i = 0;
+        for (String term : terms) {
+            int value = map.containsKey(term) ? map.get(term) : 0;
+            vector.setEntry(i++, value);
         }
-
-        @Override
-        public int compare(String s, String s2) {
-            if (keywords.get(s) >= keywords.get(s2)) {
-                return -1;
-            } else {
-                return 1;
-            } // return 0 would merge keys
-        }
+        return (RealVector) vector.mapDivide(vector.getL1Norm());
     }
+
 }

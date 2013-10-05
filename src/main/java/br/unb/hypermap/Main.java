@@ -1,7 +1,7 @@
 package br.unb.hypermap;
 
 import br.unb.hypermap.text.Result;
-import br.unb.hypermap.text.TProcessor;
+import br.unb.hypermap.text.TextProcessor;
 
 import java.io.*;
 import java.util.HashSet;
@@ -12,7 +12,7 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
 
-        TProcessor tProcessor = TProcessor.instance();
+        TextProcessor textProcessor = TextProcessor.instance();
         Set<String> data = new HashSet<String>();
         data.add(readFile(new File("samples/mobile.txt")));
         data.add(readFile(new File("samples/car.txt")));
@@ -25,7 +25,7 @@ public class Main {
             if (query.equals("q"))
                 break;
 
-            Set<Result> results = tProcessor.processAll(query, data);
+            Set<Result> results = textProcessor.processAll(query, data);
 
             if (results.isEmpty()) {
                 System.out.println("No matches found.");
