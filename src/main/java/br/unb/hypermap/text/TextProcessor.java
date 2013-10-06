@@ -18,48 +18,52 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Created with IntelliJ IDEA.
- * User: alexandrelucchesi
- * Date: 10/5/13
- * Time: 6:03 PM
- * To change this template use File | Settings | File Templates.
- */
 public class TextProcessor {
 
-    public static TextProcessor textProcessor;
+    private static final String CONTENTS = "contents";
 
-    public static final String CONTENTS = "contents";
+    private Set<String> terms = new HashSet<String>();
 
-    private final Set<String> terms = new HashSet<String>();
+    /**
+     * Computes the cosine similarity between a given query and a collection of data.
+     *
+     * @param query User query.
+     * @param data  Associates an id to data.
+     */
+    public Set<Result> process(String query, Map<String, String> data) throws IOException {
+        if (data == null)
+            return null;
 
-    public static TextProcessor instance() {
-        if (textProcessor == null)
-            textProcessor = new TextProcessor();
-        return textProcessor;
-    }
-
-    private TextProcessor() {}
-
-    public Result process(String query, String data) throws IOException {
-        Directory directory = createIndex(query, data);
-        IndexReader reader = DirectoryReader.open(directory);
-        Map<String, Integer> f1 = getTermFrequencies(reader, 0);
-        Map<String, Integer> f2 = getTermFrequencies(reader, 1);
-        reader.close();
-        RealVector v1 = toRealVector(f1);
-        RealVector v2 = toRealVector(f2);
-        Result result = new Result();
-        result.setKeywords(f2);
-        result.setScore(getCosineSimilarity(v1, v2));
-        return result;
-    }
-
-    public Set<Result> processAll(String query, Set<String> data) throws IOException {
         Set<Result> results = new HashSet<Result>();
-        for (String s : data) {
-            results.add(process(query, s));
+
+        Set<String> keys = data.keySet();
+        for (String id : keys) { // Repeats for each data source...
+            /* Instantiates a new set to hold the terms */
+            terms = new HashSet<String>();
+
+            /* Builds an index containing two documents holding the query and data contents */
+            Directory directory = createIndex(query, data.get(id));
+            IndexReader reader = DirectoryReader.open(directory);
+
+            /* Gets term frequencies for both documents */
+            Map<String, Integer> f1 = getTermFrequencies(reader, 0);
+            Map<String, Integer> f2 = getTermFrequencies(reader, 1);
+
+            /* Closes the index */
+            reader.close();
+
+            /* Makes real vectors from the terms previously retrieved */
+            RealVector v1 = toRealVector(f1);
+            RealVector v2 = toRealVector(f2);
+
+            /* Adds the result of the computation to the set of results */
+            Result result = new Result();
+            result.setId(id);
+            result.setKeywords(f2);
+            result.setScore(getCosineSimilarity(v1, v2));
+            results.add(result);
         }
+
         return results;
     }
 
@@ -94,10 +98,6 @@ public class TextProcessor {
         writer.addDocument(doc);
     }
 
-    private double getCosineSimilarity(RealVector v1, RealVector v2) {
-        return (v1.dotProduct(v2)) / (v1.getNorm() * v2.getNorm());
-    }
-
     private Map<String, Integer> getTermFrequencies(IndexReader reader, int docId)
             throws IOException {
         Terms vector = reader.getTermVector(docId, CONTENTS);
@@ -122,6 +122,10 @@ public class TextProcessor {
             vector.setEntry(i++, value);
         }
         return (RealVector) vector.mapDivide(vector.getL1Norm());
+    }
+    
+    private double getCosineSimilarity(RealVector v1, RealVector v2) {
+        return (v1.dotProduct(v2)) / (v1.getNorm() * v2.getNorm());
     }
 
 }

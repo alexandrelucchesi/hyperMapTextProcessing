@@ -7,7 +7,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 
@@ -15,14 +17,14 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
 
-        /* Gets a TextProcessor instance */
-        TextProcessor textProcessor = TextProcessor.instance();
+        /* Instantiates a TextProcessor */
+        TextProcessor textProcessor = new TextProcessor();
 
         /* Builds the data source */
-        Set<String> data = new HashSet<String>();
-        data.add(readFile(new File("samples/mobile.txt")));
-        data.add(readFile(new File("samples/car.txt")));
-        data.add(readFile(new File("samples/sell.txt")));
+        Map<String, String> data = new HashMap<String, String>();
+        data.put("http://mobile.com", readFile(new File("samples/mobile.txt")));
+        data.put("http://car.com", readFile(new File("samples/car.txt")));
+        data.put("http://sell.com", readFile(new File("samples/sell.txt")));
 
         while (true) {
             /* Gets user query */
@@ -33,7 +35,7 @@ public class Main {
                 break;
 
             /* Process query */
-            Set<Result> results = textProcessor.processAll(query, data);
+            Set<Result> results = textProcessor.process(query, data);
 
             /* Show the results */
             for (Result r : results) {
