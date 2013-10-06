@@ -30,11 +30,11 @@ public class TextProcessor {
      * @param query User query.
      * @param data  Associates an id to data.
      */
-    public Set<Result> process(String query, Map<String, String> data) throws IOException {
+    public HashSet<Result> process(String query, Map<String, String> data) throws IOException {
         if (data == null)
             return null;
 
-        Set<Result> results = new HashSet<Result>();
+        HashSet<Result> results = new HashSet<Result>();
 
         Set<String> keys = data.keySet();
         for (String id : keys) { // Repeats for each data source...
@@ -129,3 +129,4 @@ public class TextProcessor {
     }
 
 }
+
