@@ -55,8 +55,8 @@ public class TextProcessor {
         return result;
     }
 
-    public Set<Result> processAll(String query, Set<String> data) throws IOException {
-        Set<Result> results = new HashSet<Result>();
+    public HashSet<Result> processAll(String query, Set<String> data) throws IOException {
+        HashSet<Result> results = new HashSet<Result>();
         for (String s : data) {
             results.add(process(query, s));
         }

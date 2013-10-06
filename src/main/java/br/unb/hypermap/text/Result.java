@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+
 public class Result implements Serializable {
 
     private static final long serialVersionUID = 7539032571851608499L;
@@ -15,6 +16,8 @@ public class Result implements Serializable {
     private Map<String, Integer> keywords;
 
     private double score;
+    
+    private Qualifier quality;
 
     public Result() {}
 
@@ -41,6 +44,14 @@ public class Result implements Serializable {
     public void setScore(double score) {
         this.score = score;
     }
+    
+    public Qualifier getQuality() {
+		return quality;
+	}
+
+	public void setQuality(Qualifier quality) {
+		this.quality = quality;
+	}
 
     public Result sortKeywords() {
         ValueComparator comparator = new ValueComparator(keywords);
@@ -50,8 +61,10 @@ public class Result implements Serializable {
         return this;
     }
 
-    private class ValueComparator implements Comparator<String> {
+	private class ValueComparator implements Comparator<String>, Serializable {
 
+        private static final long serialVersionUID = 4976424122864432064L;
+		
         private final Map<String,Integer> keywords;
 
         public ValueComparator(Map<String, Integer> keywords) {
