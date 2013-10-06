@@ -28,7 +28,7 @@ public class Main {
 
         while (true) {
             /* Gets user query */
-            System.out.println("Enter query: ");
+            System.out.print("Enter query: ");
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
             java.lang.String query = bufferedReader.readLine();
             if (query.equals("q"))
@@ -37,12 +37,25 @@ public class Main {
             /* Process query */
             Set<Result> results = textProcessor.process(query, data);
 
-            /* Show the results */
-            for (Result r : results) {
-                System.out.println("URL     : " + r.getId());
-                System.out.println("Keywords: " + r.sortKeywords().getKeywords());
-                System.out.println("Score   : " + r.getScore());
-                System.out.println();
+            System.out.println();
+            if (results == null) {
+                System.out.println("Oh gosh! You passed null data, didn't you?");
+                System.out.println("You won't break my app this way, sry! :-( haha");
+                break;
+            } else {
+                int count = 0;
+                for (Result r : results) {
+                    /* Show only results that matched */
+                    if (r.getScore() > 0) {
+                        System.out.println("URL     : " + r.getId());
+                        System.out.println("Keywords: " + r.sortKeywords().getKeywords());
+                        System.out.println("Score   : " + r.getScore());
+                        System.out.println();
+                        count++;
+                    }
+                }
+                System.out.println("Total matches: " + count);
+                System.out.println("=================================================================");
             }
         }
     }
