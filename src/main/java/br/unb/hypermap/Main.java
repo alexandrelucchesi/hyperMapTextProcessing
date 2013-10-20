@@ -1,17 +1,16 @@
 package br.unb.hypermap;
 
-import br.unb.hypermap.text.Result;
-import br.unb.hypermap.text.TextProcessor;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
+
+import br.unb.hypermap.text.Result;
+import br.unb.hypermap.text.TextProcessor;
 
 public class Main {
 

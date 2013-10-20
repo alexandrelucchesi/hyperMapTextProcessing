@@ -60,6 +60,11 @@ public class Result implements Serializable {
         this.keywords = sortedKeywords;
         return this;
     }
+    
+    @Override
+    public String toString() {
+    	return "" + getId() + "$$" + getScore() + "$$" + getQuality() +"$$"+ getKeywords();
+    }
 
 	private class ValueComparator implements Comparator<String>, Serializable {
 

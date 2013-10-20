@@ -43,6 +43,7 @@ public class TextProcessor {
 
             /* Builds an index containing two documents holding the query and data contents */
             Directory directory = createIndex(query, data.get(id));
+            if(directory == null) continue;
             IndexReader reader = DirectoryReader.open(directory);
 
             /* Gets term frequencies for both documents */
@@ -68,11 +69,13 @@ public class TextProcessor {
     }
 
     private Directory createIndex(String s1, String s2) throws IOException {
+    	if(s2.length() == 0) return null;
         Directory directory = new RAMDirectory();
         Analyzer analyzer = new HyperMapAnalyzer(Version.LUCENE_44);
         IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_44,
                 analyzer);
         IndexWriter writer = new IndexWriter(directory, iwc);
+        System.out.println("s1 length: " + s1.length() + "s2 length: " + s2.length());
         addDocument(writer, s1);
         addDocument(writer, s2);
         writer.close();
@@ -101,6 +104,7 @@ public class TextProcessor {
     private Map<String, Integer> getTermFrequencies(IndexReader reader, int docId)
             throws IOException {
         Terms vector = reader.getTermVector(docId, CONTENTS);
+        System.out.println("vector: " + vector + " docId: " + docId);
         TermsEnum termsEnum = null;
         termsEnum = vector.iterator(termsEnum);
         Map<String, Integer> frequencies = new HashMap<String, Integer>();
