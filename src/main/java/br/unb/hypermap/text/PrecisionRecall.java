@@ -1,11 +1,8 @@
 package br.unb.hypermap.text;
 
-import org.apache.lucene.analysis.core.SimpleAnalyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.benchmark.quality.*;
 import org.apache.lucene.benchmark.quality.trec.TrecJudge;
 import org.apache.lucene.benchmark.quality.trec.TrecTopicsReader;
-import org.apache.lucene.benchmark.quality.utils.SimpleQQParser;
 import org.apache.lucene.benchmark.quality.utils.SubmissionReport;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -52,8 +49,6 @@ public class PrecisionRecall {
         IndexReader reader = DirectoryReader.open(dir);
         IndexSearcher searcher = new IndexSearcher(reader);
 
-        String docNameField = "filename";
-
         PrintWriter logger = new PrintWriter(System.out, true);
 
         TrecTopicsReader qReader = new TrecTopicsReader();   //#1
@@ -78,7 +73,7 @@ public class PrecisionRecall {
 
         QualityQueryParser qqParser = new HyperMapQQAnalyzer("title", "contents");  //#4
 
-        QualityBenchmark qrun = new QualityBenchmark(qqs, qqParser, searcher, docNameField);
+        QualityBenchmark qrun = new QualityBenchmark(qqs, qqParser, searcher, URL);
         SubmissionReport submitLog = null;
         QualityStats stats[] = qrun.execute(judge,           //#5
                 submitLog, logger);
@@ -94,7 +89,7 @@ public class PrecisionRecall {
 
     private static final String CONTENTS = "contents";
 
-    private static final String FILENAME = "filename";
+    private static final String URL = "url";
 
     static {
         TYPE_STORED.setIndexed(true);
@@ -105,9 +100,9 @@ public class PrecisionRecall {
         TYPE_STORED.freeze();
     }
 
-    private static void addDocument(IndexWriter writer, String filename, String contents) throws IOException {
+    private static void addDocument(IndexWriter writer, String url, String contents) throws IOException {
         Document doc = new Document();
-        Field f1 = new StringField(FILENAME, filename, Field.Store.YES);
+        Field f1 = new StringField(URL, url, Field.Store.YES);
         Field f2 = new Field(CONTENTS, contents, TYPE_STORED);
         doc.add(f1);
         doc.add(f2);
