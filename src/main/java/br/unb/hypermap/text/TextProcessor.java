@@ -69,7 +69,7 @@ public class TextProcessor {
     }
 
     private Directory createIndex(String s1, String s2) throws IOException {
-    	if(s2.length() == 0) return null;
+        if(s2.length() == 0) return null;
         Directory directory = new RAMDirectory();
         Analyzer analyzer = new HyperMapAnalyzer(Version.LUCENE_44);
         IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_44,
@@ -127,7 +127,7 @@ public class TextProcessor {
         }
         return (RealVector) vector.mapDivide(vector.getL1Norm());
     }
-    
+
     private double getCosineSimilarity(RealVector v1, RealVector v2) {
         return (v1.dotProduct(v2)) / (v1.getNorm() * v2.getNorm());
     }

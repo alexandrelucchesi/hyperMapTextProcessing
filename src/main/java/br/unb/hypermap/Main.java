@@ -21,9 +21,10 @@ public class Main {
 
         /* Builds the data source */
         Map<String, String> data = new HashMap<String, String>();
-        data.put("http://mobile.com", readFile(new File("samples/mobile.txt")));
-        data.put("http://car.com", readFile(new File("samples/car.txt")));
-        data.put("http://sell.com", readFile(new File("samples/sell.txt")));
+//        data.put("http://mobile.com", readFile(new File("samples/mobile.txt")));
+//        data.put("http://car.com", readFile(new File("samples/car.txt")));
+//        data.put("http://sell.com", readFile(new File("samples/sell.txt")));
+        data.put("apache1.0.txt", readFile(new File("samples/quality/apache1.0.txt")));
 
         while (true) {
             /* Gets user query */

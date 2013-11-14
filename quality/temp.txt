@@ -1,0 +1,24 @@
+SUMMARY
+  Search Seconds: 0.015
+  DocName Seconds: 0.006
+  Num Points: 15.000
+  Num Good Points: 3.000
+  Max Good Points: 3.000
+  Average Precision: 1.000
+  MRR: 1.000
+  Recall: 1.000
+  Precision At 1: 1.000
+  Precision At 2: 1.000
+  Precision At 3: 1.000
+  Precision At 4: 0.750
+  Precision At 5: 0.600
+  Precision At 6: 0.500
+  Precision At 7: 0.429
+  Precision At 8: 0.375
+  Precision At 9: 0.333
+  Precision At 10: 0.300
+  Precision At 11: 0.273
+  Precision At 12: 0.250
+  Precision At 12: 0.231
+  Precision At 14: 0.214
+
