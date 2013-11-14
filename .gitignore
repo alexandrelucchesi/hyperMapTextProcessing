@@ -10,3 +10,9 @@ target
 .idea
 *.iml
 
+# MacOS
+.DS_Store
+
+# Index dir
+index
+
