@@ -1,6 +1,22 @@
 package br.unb.hypermap.text;
 
-import org.apache.lucene.benchmark.quality.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Scanner;
+import java.util.Set;
+
+import org.apache.lucene.benchmark.quality.Judge;
+import org.apache.lucene.benchmark.quality.QualityBenchmark;
+import org.apache.lucene.benchmark.quality.QualityQuery;
+import org.apache.lucene.benchmark.quality.QualityQueryParser;
+import org.apache.lucene.benchmark.quality.QualityStats;
 import org.apache.lucene.benchmark.quality.trec.TrecJudge;
 import org.apache.lucene.benchmark.quality.trec.TrecTopicsReader;
 import org.apache.lucene.benchmark.quality.utils.SubmissionReport;
@@ -17,45 +33,86 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
 
-import java.io.*;
-import java.util.Scanner;
-
 public class PrecisionRecall {
+	
+	private Directory indexDir;
+	private IndexWriter writer;
+	private File topicsFile;
+	private File qrelsFile;
+	private HashMap<String, ArrayList<String>> qrels;
 
-    public static void main(String[] args) throws Throwable {
-
-        // INDEXING...
-        Directory directory = FSDirectory.open(new File("index"));
-        IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_44, new HyperMapAnalyzer(Version.LUCENE_44));
+	private static String TOPICS_FORMAT = "<top>\n" +
+			"<num> Number: %d\n" +
+			"<title> %s\n" +
+			"<desc> Description: %s\n" +
+			"<narr> Narrative: %s\n" +
+			"</top>";
+	//qnum	0	doc-name	is-relevant
+	private static String QRELS_FORMAT = "%d\t0\t%s\t%d";
+	
+	public PrecisionRecall(File indexPath, File topicsFile, File qrelsFile) throws Throwable {
+		indexDir = FSDirectory.open(indexPath);
+		IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_44, new HyperMapAnalyzer(Version.LUCENE_44));
         iwc.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
-        IndexWriter writer = new IndexWriter(directory, iwc);
+        writer = new IndexWriter(indexDir, iwc);
+        qrels = new HashMap<String, ArrayList<String>>();
+        this.topicsFile = topicsFile;
+        this.qrelsFile = qrelsFile; 
+	}
+	
+	public void createQrelsAndTopics() throws IOException {
+		PrintWriter qrelsOut = new PrintWriter(new FileWriter(qrelsFile));
+		PrintWriter topicsOut = new PrintWriter(new FileWriter(topicsFile));
+		
+		Set<String> keySet = qrels.keySet();
+		int qNum = 0;
+		for(String key : keySet) {
+			topicsOut.println(String.format(TOPICS_FORMAT, qNum, key, "", ""));
+			topicsOut.flush();
+			
+			ArrayList<String> urls = qrels.get(key);
+			for(int i = 0; i < urls.size(); i++) {
+				qrelsOut.println(String.format(QRELS_FORMAT, qNum, urls.get(i), 1));
+				qrelsOut.flush();
+			}
+			qNum++;
+		}
+		topicsOut.close();
+		qrelsOut.close();
+	}
+	
+	public void addRelevantDocument(String query, String url) {
+		if(!qrels.containsKey(query)) {
+			ArrayList<String> urls = new ArrayList<String>();
+			urls.add(url);
+			qrels.put(query, urls);
+		} else {
+			ArrayList<String> urls = qrels.get(query);
+			urls.add(url);
+			qrels.put(query, urls); // Is it unecessary? urls share the same instance of qrels.get(query).
+		}
+	}
+	
+	public void closeIndexWriter() throws Throwable {
+		writer.close();
+	}
+	
+	public void close() throws Throwable {
+		indexDir.close();
+	}
 
-        addDocument(writer, "apache1.0.txt", readFile(new File("samples/quality/apache1.0.txt")));
-        addDocument(writer, "apache1.1.txt", readFile(new File("samples/quality/apache1.0.txt")));
-        addDocument(writer, "apache2.0.txt", readFile(new File("samples/quality/apache1.0.txt")));
-        addDocument(writer, "car.txt", readFile(new File("samples/car.txt")));
-        addDocument(writer, "mobile.txt", readFile(new File("samples/mobile.txt")));
-        addDocument(writer, "sell.txt", readFile(new File("samples/sell.txt")));
-
-        writer.close();
-
-        //----------------------------------------------------------------------
+    public void getPrecisionRecall(PrintStream output) throws Throwable {
 
         // MEASURING QUALITY...
-        File topicsFile = new File("quality/topics.txt");
-        File qrelsFile = new File("quality/qrels.txt");
-        Directory dir = FSDirectory.open(new File("index"));
-
-        IndexReader reader = DirectoryReader.open(dir);
+        IndexReader reader = DirectoryReader.open(indexDir);
         IndexSearcher searcher = new IndexSearcher(reader);
 
-        PrintWriter logger = new PrintWriter(System.out, true);
+        PrintWriter logger = new PrintWriter(output, true);
 
         TrecTopicsReader qReader = new TrecTopicsReader();   //#1
-        QualityQuery qqs[] = qReader.readQueries(            //#1
-                new BufferedReader(new FileReader(topicsFile))); //#1
+        QualityQuery qqs[] = qReader.readQueries(new BufferedReader(new FileReader(topicsFile))); //#1
 
-        System.out.println("QUALITY QUERIES");
+        System.out.println("QUALITY QUERIES ---------");
         for (QualityQuery q : qqs) {
             System.out.println("ID: " + q.getQueryID());
             System.out.println("Name=Value:");
@@ -66,21 +123,18 @@ public class PrecisionRecall {
         }
         System.out.println();
 
-        Judge judge = new TrecJudge(new BufferedReader(      //#2
-                new FileReader(qrelsFile)));                     //#2
+        Judge judge = new TrecJudge(new BufferedReader(new FileReader(qrelsFile))); //#2
 
-        judge.validateData(qqs, logger);                     //#3
+        judge.validateData(qqs, logger);//#3
 
         QualityQueryParser qqParser = new HyperMapQQAnalyzer("title", "contents");  //#4
 
         QualityBenchmark qrun = new QualityBenchmark(qqs, qqParser, searcher, URL);
         SubmissionReport submitLog = null;
-        QualityStats stats[] = qrun.execute(judge,           //#5
-                submitLog, logger);
+        QualityStats stats[] = qrun.execute(judge, submitLog, logger); //#5
 
-        QualityStats avg = QualityStats.average(stats);      //#6
+        QualityStats avg = QualityStats.average(stats); //#6
         avg.log("SUMMARY", 2, logger, "  ");
-        dir.close();
     }
 
 
@@ -100,7 +154,7 @@ public class PrecisionRecall {
         TYPE_STORED.freeze();
     }
 
-    private static void addDocument(IndexWriter writer, String url, String contents) throws IOException {
+    public void addDocument(String url, String contents) throws IOException {
         Document doc = new Document();
         Field f1 = new StringField(URL, url, Field.Store.YES);
         Field f2 = new Field(CONTENTS, contents, TYPE_STORED);
@@ -108,9 +162,18 @@ public class PrecisionRecall {
         doc.add(f2);
         writer.addDocument(doc);
     }
+    
+    public void addDocument(String url, File file) throws IOException {
+        Document doc = new Document();
+        Field f1 = new StringField(URL, url, Field.Store.YES);
+        Field f2 = new Field(CONTENTS, readFile(file), TYPE_STORED);
+        doc.add(f1);
+        doc.add(f2);
+        writer.addDocument(doc);
+    }
 
     /* Helper */
-    private static String readFile(File file) throws IOException {
+    public String readFile(File file) throws IOException {
         return new Scanner(file).useDelimiter("\\A").next();
     }
 }
